@@ -2,8 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const newTodoInput = document.getElementById('newTodo');
     const newDueDateInput = document.getElementById('newDueDate');
     const newPriorityInput = document.getElementById('newPriority');
+    const newCategoriesInput = document.getElementById('newCategories');
     const addTodoButton = document.getElementById('addTodo');
     const todoList = document.getElementById('todoList');
+    const newCategoryInput = document.getElementById('newCategory');
+    const addCategoryButton = document.getElementById('addCategory');
+    const categoryList = document.getElementById('categoryList');
 
     function fetchTodos() {
         fetch('/api/todos')
@@ -33,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>${todo.task}</span>
             <small class="text-muted">Due: ${todo.due_date || 'Not set'}</small>
             <small class="text-muted">Priority: ${getPriorityText(todo.priority)}</small>
+            <small class="text-muted">Categories: ${todo.categories.map(cat => cat.name).join(', ') || 'None'}</small>
             <div class="todo-actions">
                 <button class="btn btn-sm btn-success complete-btn">Complete</button>
                 <button class="btn btn-sm btn-danger delete-btn">Delete</button>
@@ -61,13 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const task = newTodoInput.value.trim();
         const dueDate = newDueDateInput.value;
         const priority = parseInt(newPriorityInput.value);
+        const categoryIds = Array.from(newCategoriesInput.selectedOptions).map(option => parseInt(option.value));
         if (task) {
             fetch('/api/todos', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ task, due_date: dueDate, priority }),
+                body: JSON.stringify({ task, due_date: dueDate, priority, category_ids: categoryIds }),
             })
             .then(response => {
                 if (response.ok) {
@@ -82,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newTodoInput.value = '';
                 newDueDateInput.value = '';
                 newPriorityInput.value = '1';
+                newCategoriesInput.selectedIndex = -1;
                 fetchTodos();
             })
             .catch(error => console.error('Error:', error));
@@ -124,6 +131,90 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error('Error:', error));
     }
 
+    function fetchCategories() {
+        fetch('/api/categories')
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                } else {
+                    throw new Error('Failed to fetch categories');
+                }
+            })
+            .then(categories => {
+                categoryList.innerHTML = '';
+                newCategoriesInput.innerHTML = '';
+                categories.forEach(category => {
+                    const li = createCategoryElement(category);
+                    categoryList.appendChild(li);
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    newCategoriesInput.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function createCategoryElement(category) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+            <span>${category.name}</span>
+            <button class="btn btn-sm btn-danger delete-category-btn">Delete</button>
+        `;
+
+        const deleteBtn = li.querySelector('.delete-category-btn');
+        deleteBtn.addEventListener('click', () => deleteCategory(category.id));
+
+        return li;
+    }
+
+    function addCategory() {
+        const name = newCategoryInput.value.trim();
+        if (name) {
+            fetch('/api/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                } else {
+                    throw new Error('Failed to add category');
+                }
+            })
+            .then(() => {
+                newCategoryInput.value = '';
+                fetchCategories();
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }
+
+    function deleteCategory(id) {
+        fetch(`/api/categories/${id}`, {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.ok) {
+                fetchCategories();
+                fetchTodos();
+            } else if (response.status === 401) {
+                window.location.href = '/login';
+            } else {
+                throw new Error('Failed to delete category');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
     addTodoButton.addEventListener('click', addTodo);
     newTodoInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -131,5 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    addCategoryButton.addEventListener('click', addCategory);
+    newCategoryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addCategory();
+        }
+    });
+
     fetchTodos();
+    fetchCategories();
 });

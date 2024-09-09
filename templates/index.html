@@ -16,19 +16,36 @@
                 <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
             </div>
         </div>
-        <div class="mb-3">
-            <input type="text" id="newTodo" class="form-control mb-2" placeholder="Enter a new todo">
-            <input type="date" id="newDueDate" class="form-control mb-2">
-            <select id="newPriority" class="form-select mb-2">
-                <option value="1">Low Priority</option>
-                <option value="2">Medium Priority</option>
-                <option value="3">High Priority</option>
-            </select>
-            <button id="addTodo" class="btn btn-primary mt-2">Add Todo</button>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <input type="text" id="newTodo" class="form-control mb-2" placeholder="Enter a new todo">
+                    <input type="date" id="newDueDate" class="form-control mb-2">
+                    <select id="newPriority" class="form-select mb-2">
+                        <option value="1">Low Priority</option>
+                        <option value="2">Medium Priority</option>
+                        <option value="3">High Priority</option>
+                    </select>
+                    <select id="newCategories" class="form-select mb-2" multiple>
+                        <!-- Categories will be populated here -->
+                    </select>
+                    <button id="addTodo" class="btn btn-primary mt-2">Add Todo</button>
+                </div>
+                <ul id="todoList" class="list-group">
+                    <!-- Todo items will be inserted here -->
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h3>Categories</h3>
+                <div class="mb-3">
+                    <input type="text" id="newCategory" class="form-control mb-2" placeholder="Enter a new category">
+                    <button id="addCategory" class="btn btn-secondary">Add Category</button>
+                </div>
+                <ul id="categoryList" class="list-group">
+                    <!-- Categories will be inserted here -->
+                </ul>
+            </div>
         </div>
-        <ul id="todoList" class="list-group">
-            <!-- Todo items will be inserted here -->
-        </ul>
     </div>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

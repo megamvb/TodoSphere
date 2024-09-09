@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, f
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from database import db
-from models import User, Todo
+from models import User, Todo, Category
 from datetime import datetime
 
 app = Flask(__name__)
@@ -69,7 +69,8 @@ def get_todos():
         'task': todo.task,
         'completed': todo.completed,
         'due_date': todo.due_date.isoformat() if todo.due_date else None,
-        'priority': todo.priority
+        'priority': todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in todo.categories]
     } for todo in todos])
 
 @app.route('/api/todos', methods=['POST'])
@@ -83,6 +84,9 @@ def add_todo():
         priority=data.get('priority', 1),
         user=current_user
     )
+    if 'category_ids' in data:
+        categories = Category.query.filter(Category.id.in_(data['category_ids'])).all()
+        new_todo.categories = categories
     db.session.add(new_todo)
     db.session.commit()
     return jsonify({
@@ -90,7 +94,8 @@ def add_todo():
         'task': new_todo.task,
         'completed': new_todo.completed,
         'due_date': new_todo.due_date.isoformat() if new_todo.due_date else None,
-        'priority': new_todo.priority
+        'priority': new_todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in new_todo.categories]
     }), 201
 
 @app.route('/api/todos/<int:todo_id>', methods=['PUT'])
@@ -102,13 +107,17 @@ def update_todo(todo_id):
     todo.task = data.get('task', todo.task)
     todo.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None
     todo.priority = data.get('priority', todo.priority)
+    if 'category_ids' in data:
+        categories = Category.query.filter(Category.id.in_(data['category_ids'])).all()
+        todo.categories = categories
     db.session.commit()
     return jsonify({
         'id': todo.id,
         'task': todo.task,
         'completed': todo.completed,
         'due_date': todo.due_date.isoformat() if todo.due_date else None,
-        'priority': todo.priority
+        'priority': todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in todo.categories]
     })
 
 @app.route('/api/todos/<int:todo_id>', methods=['DELETE'])
@@ -116,6 +125,38 @@ def update_todo(todo_id):
 def delete_todo(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user=current_user).first_or_404()
     db.session.delete(todo)
+    db.session.commit()
+    return '', 204
+
+@app.route('/api/categories', methods=['GET'])
+@login_required
+def get_categories():
+    categories = Category.query.filter_by(user=current_user).all()
+    return jsonify([{'id': cat.id, 'name': cat.name} for cat in categories])
+
+@app.route('/api/categories', methods=['POST'])
+@login_required
+def add_category():
+    data = request.json
+    new_category = Category(name=data['name'], user=current_user)
+    db.session.add(new_category)
+    db.session.commit()
+    return jsonify({'id': new_category.id, 'name': new_category.name}), 201
+
+@app.route('/api/categories/<int:category_id>', methods=['PUT'])
+@login_required
+def update_category(category_id):
+    category = Category.query.filter_by(id=category_id, user=current_user).first_or_404()
+    data = request.json
+    category.name = data['name']
+    db.session.commit()
+    return jsonify({'id': category.id, 'name': category.name})
+
+@app.route('/api/categories/<int:category_id>', methods=['DELETE'])
+@login_required
+def delete_category(category_id):
+    category = Category.query.filter_by(id=category_id, user=current_user).first_or_404()
+    db.session.delete(category)
     db.session.commit()
     return '', 204
 
