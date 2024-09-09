@@ -5,6 +5,7 @@ from flask_bcrypt import Bcrypt
 from database import db
 from models import User, Todo, Category
 from datetime import datetime
+from sqlalchemy import or_
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
@@ -63,7 +64,16 @@ def logout():
 @app.route('/api/todos', methods=['GET'])
 @login_required
 def get_todos():
-    todos = current_user.todos
+    search_query = request.args.get('search', '').strip()
+    todos_query = Todo.query.filter_by(user=current_user)
+
+    if search_query:
+        todos_query = todos_query.filter(or_(
+            Todo.task.ilike(f'%{search_query}%'),
+            Todo.categories.any(Category.name.ilike(f'%{search_query}%'))
+        ))
+
+    todos = todos_query.all()
     return jsonify([{
         'id': todo.id,
         'task': todo.task,
@@ -162,6 +172,5 @@ def delete_category(category_id):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.drop_all()  # Drop all existing tables
         db.create_all()  # Create all tables
     app.run(host='0.0.0.0', port=5000)

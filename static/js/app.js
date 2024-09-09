@@ -8,9 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const newCategoryInput = document.getElementById('newCategory');
     const addCategoryButton = document.getElementById('addCategory');
     const categoryList = document.getElementById('categoryList');
+    const searchTodoInput = document.getElementById('searchTodo');
 
-    function fetchTodos() {
-        fetch('/api/todos')
+    function fetchTodos(searchQuery = '') {
+        const url = searchQuery ? `/api/todos?search=${encodeURIComponent(searchQuery)}` : '/api/todos';
+        fetch(url)
             .then(response => {
                 if (response.ok) {
                     return response.json();
@@ -227,6 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') {
             addCategory();
         }
+    });
+
+    searchTodoInput.addEventListener('input', (e) => {
+        const searchQuery = e.target.value.trim();
+        fetchTodos(searchQuery);
     });
 
     fetchTodos();
