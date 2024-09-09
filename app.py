@@ -4,6 +4,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from flask_bcrypt import Bcrypt
 from database import db
 from models import User, Todo
+from datetime import datetime
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
@@ -63,25 +64,52 @@ def logout():
 @login_required
 def get_todos():
     todos = current_user.todos
-    return jsonify([{'id': todo.id, 'task': todo.task, 'completed': todo.completed} for todo in todos])
+    return jsonify([{
+        'id': todo.id,
+        'task': todo.task,
+        'completed': todo.completed,
+        'due_date': todo.due_date.isoformat() if todo.due_date else None,
+        'priority': todo.priority
+    } for todo in todos])
 
 @app.route('/api/todos', methods=['POST'])
 @login_required
 def add_todo():
     data = request.json
-    new_todo = Todo(task=data['task'], user=current_user)
+    due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None
+    new_todo = Todo(
+        task=data['task'],
+        due_date=due_date,
+        priority=data.get('priority', 1),
+        user=current_user
+    )
     db.session.add(new_todo)
     db.session.commit()
-    return jsonify({'id': new_todo.id, 'task': new_todo.task, 'completed': new_todo.completed}), 201
+    return jsonify({
+        'id': new_todo.id,
+        'task': new_todo.task,
+        'completed': new_todo.completed,
+        'due_date': new_todo.due_date.isoformat() if new_todo.due_date else None,
+        'priority': new_todo.priority
+    }), 201
 
 @app.route('/api/todos/<int:todo_id>', methods=['PUT'])
 @login_required
 def update_todo(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user=current_user).first_or_404()
     data = request.json
-    todo.completed = data['completed']
+    todo.completed = data.get('completed', todo.completed)
+    todo.task = data.get('task', todo.task)
+    todo.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None
+    todo.priority = data.get('priority', todo.priority)
     db.session.commit()
-    return jsonify({'id': todo.id, 'task': todo.task, 'completed': todo.completed})
+    return jsonify({
+        'id': todo.id,
+        'task': todo.task,
+        'completed': todo.completed,
+        'due_date': todo.due_date.isoformat() if todo.due_date else None,
+        'priority': todo.priority
+    })
 
 @app.route('/api/todos/<int:todo_id>', methods=['DELETE'])
 @login_required

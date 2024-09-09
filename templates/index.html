@@ -17,7 +17,13 @@
             </div>
         </div>
         <div class="mb-3">
-            <input type="text" id="newTodo" class="form-control" placeholder="Enter a new todo">
+            <input type="text" id="newTodo" class="form-control mb-2" placeholder="Enter a new todo">
+            <input type="date" id="newDueDate" class="form-control mb-2">
+            <select id="newPriority" class="form-select mb-2">
+                <option value="1">Low Priority</option>
+                <option value="2">Medium Priority</option>
+                <option value="3">High Priority</option>
+            </select>
             <button id="addTodo" class="btn btn-primary mt-2">Add Todo</button>
         </div>
         <ul id="todoList" class="list-group">

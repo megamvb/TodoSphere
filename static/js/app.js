@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const newTodoInput = document.getElementById('newTodo');
+    const newDueDateInput = document.getElementById('newDueDate');
+    const newPriorityInput = document.getElementById('newPriority');
     const addTodoButton = document.getElementById('addTodo');
     const todoList = document.getElementById('todoList');
 
@@ -29,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
         li.className = `list-group-item todo-item ${todo.completed ? 'completed' : ''}`;
         li.innerHTML = `
             <span>${todo.task}</span>
+            <small class="text-muted">Due: ${todo.due_date || 'Not set'}</small>
+            <small class="text-muted">Priority: ${getPriorityText(todo.priority)}</small>
             <div class="todo-actions">
                 <button class="btn btn-sm btn-success complete-btn">Complete</button>
                 <button class="btn btn-sm btn-danger delete-btn">Delete</button>
@@ -44,15 +48,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return li;
     }
 
+    function getPriorityText(priority) {
+        switch (priority) {
+            case 1: return 'Low';
+            case 2: return 'Medium';
+            case 3: return 'High';
+            default: return 'Unknown';
+        }
+    }
+
     function addTodo() {
         const task = newTodoInput.value.trim();
+        const dueDate = newDueDateInput.value;
+        const priority = parseInt(newPriorityInput.value);
         if (task) {
             fetch('/api/todos', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ task }),
+                body: JSON.stringify({ task, due_date: dueDate, priority }),
             })
             .then(response => {
                 if (response.ok) {
@@ -65,6 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(() => {
                 newTodoInput.value = '';
+                newDueDateInput.value = '';
+                newPriorityInput.value = '1';
                 fetchTodos();
             })
             .catch(error => console.error('Error:', error));
