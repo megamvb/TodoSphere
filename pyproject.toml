@@ -12,6 +12,7 @@ flask = "^3.0.3"
 psycopg2-binary = "^2.9.9"
 flask-login = "^0.6.3"
 flask-bcrypt = "^1.0.1"
+sendgrid = "^6.11.0"
 
 
 [build-system]
