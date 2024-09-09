@@ -5,14 +5,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function fetchTodos() {
         fetch('/api/todos')
-            .then(response => response.json())
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                } else {
+                    throw new Error('Failed to fetch todos');
+                }
+            })
             .then(todos => {
                 todoList.innerHTML = '';
                 todos.forEach(todo => {
                     const li = createTodoElement(todo);
                     todoList.appendChild(li);
                 });
-            });
+            })
+            .catch(error => console.error('Error:', error));
     }
 
     function createTodoElement(todo) {
@@ -45,11 +54,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({ task }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                } else {
+                    throw new Error('Failed to add todo');
+                }
+            })
             .then(() => {
                 newTodoInput.value = '';
                 fetchTodos();
-            });
+            })
+            .catch(error => console.error('Error:', error));
         }
     }
 
@@ -61,14 +79,32 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({ completed }),
         })
-        .then(() => fetchTodos());
+        .then(response => {
+            if (response.ok) {
+                fetchTodos();
+            } else if (response.status === 401) {
+                window.location.href = '/login';
+            } else {
+                throw new Error('Failed to update todo');
+            }
+        })
+        .catch(error => console.error('Error:', error));
     }
 
     function deleteTodo(id) {
         fetch(`/api/todos/${id}`, {
             method: 'DELETE',
         })
-        .then(() => fetchTodos());
+        .then(response => {
+            if (response.ok) {
+                fetchTodos();
+            } else if (response.status === 401) {
+                window.location.href = '/login';
+            } else {
+                throw new Error('Failed to delete todo');
+            }
+        })
+        .catch(error => console.error('Error:', error));
     }
 
     addTodoButton.addEventListener('click', addTodo);
