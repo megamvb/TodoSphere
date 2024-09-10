@@ -13,6 +13,7 @@
             <h1>To do App</h1>
             <div>
                 <span class="me-3">Welcome, {{ current_user.username }}</span>
+                <a href="{{ url_for('profile') }}" class="btn btn-info me-2">Profile</a>
                 <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
             </div>
         </div>

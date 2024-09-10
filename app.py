@@ -62,6 +62,32 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        new_password = request.form.get('new_password')
+
+        existing_user = User.query.filter(
+            (User.username == username) & (User.id != current_user.id) |
+            (User.email == email) & (User.id != current_user.id)
+        ).first()
+
+        if existing_user:
+            flash('Username or email already exists')
+        else:
+            current_user.username = username
+            current_user.email = email
+            if new_password:
+                current_user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            db.session.commit()
+            flash('Profile updated successfully!')
+            return redirect(url_for('profile'))
+
+    return render_template('profile.html')
+
 @app.route('/api/todos', methods=['GET'])
 @login_required
 def get_todos():
