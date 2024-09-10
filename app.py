@@ -62,33 +62,114 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/profile', methods=['GET', 'POST'])
+@app.route('/api/todos', methods=['GET'])
 @login_required
-def profile():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        new_password = request.form.get('new_password')
+def get_todos():
+    search_query = request.args.get('search', '').strip()
+    todos_query = Todo.query.filter_by(user=current_user)
 
-        existing_user = User.query.filter(
-            ((User.username == username) | (User.email == email)) &
-            (User.id != current_user.id)
-        ).first()
+    if search_query:
+        todos_query = todos_query.filter(or_(
+            Todo.task.ilike(f'%{search_query}%'),
+            Todo.categories.any(Category.name.ilike(f'%{search_query}%'))
+        ))
 
-        if existing_user:
-            flash('Username or email already exists')
-        else:
-            current_user.username = username
-            current_user.email = email
-            if new_password:
-                current_user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
-            db.session.commit()
-            flash('Profile updated successfully')
-            return redirect(url_for('profile'))
+    todos = todos_query.all()
+    return jsonify([{
+        'id': todo.id,
+        'task': todo.task,
+        'completed': todo.completed,
+        'due_date': todo.due_date.isoformat() if todo.due_date else None,
+        'priority': todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in todo.categories]
+    } for todo in todos])
 
-    return render_template('profile.html')
+@app.route('/api/todos', methods=['POST'])
+@login_required
+def add_todo():
+    data = request.json
+    due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None
+    new_todo = Todo(
+        task=data['task'],
+        due_date=due_date,
+        priority=data.get('priority', 1),
+        user=current_user
+    )
+    if 'category_ids' in data:
+        categories = Category.query.filter(Category.id.in_(data['category_ids'])).all()
+        new_todo.categories = categories
+    db.session.add(new_todo)
+    db.session.commit()
+    return jsonify({
+        'id': new_todo.id,
+        'task': new_todo.task,
+        'completed': new_todo.completed,
+        'due_date': new_todo.due_date.isoformat() if new_todo.due_date else None,
+        'priority': new_todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in new_todo.categories]
+    }), 201
 
-# ... (rest of the code remains unchanged)
+@app.route('/api/todos/<int:todo_id>', methods=['PUT'])
+@login_required
+def update_todo(todo_id):
+    todo = Todo.query.filter_by(id=todo_id, user=current_user).first_or_404()
+    data = request.json
+    todo.completed = data.get('completed', todo.completed)
+    todo.task = data.get('task', todo.task)
+    todo.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None
+    todo.priority = data.get('priority', todo.priority)
+    if 'category_ids' in data:
+        categories = Category.query.filter(Category.id.in_(data['category_ids'])).all()
+        todo.categories = categories
+    db.session.commit()
+    return jsonify({
+        'id': todo.id,
+        'task': todo.task,
+        'completed': todo.completed,
+        'due_date': todo.due_date.isoformat() if todo.due_date else None,
+        'priority': todo.priority,
+        'categories': [{'id': cat.id, 'name': cat.name} for cat in todo.categories]
+    })
+
+@app.route('/api/todos/<int:todo_id>', methods=['DELETE'])
+@login_required
+def delete_todo(todo_id):
+    todo = Todo.query.filter_by(id=todo_id, user=current_user).first_or_404()
+    db.session.delete(todo)
+    db.session.commit()
+    return '', 204
+
+@app.route('/api/categories', methods=['GET'])
+@login_required
+def get_categories():
+    categories = Category.query.filter_by(user=current_user).all()
+    return jsonify([{'id': cat.id, 'name': cat.name} for cat in categories])
+
+@app.route('/api/categories', methods=['POST'])
+@login_required
+def add_category():
+    data = request.json
+    new_category = Category(name=data['name'], user=current_user)
+    db.session.add(new_category)
+    db.session.commit()
+    return jsonify({'id': new_category.id, 'name': new_category.name}), 201
+
+@app.route('/api/categories/<int:category_id>', methods=['PUT'])
+@login_required
+def update_category(category_id):
+    category = Category.query.filter_by(id=category_id, user=current_user).first_or_404()
+    data = request.json
+    category.name = data['name']
+    db.session.commit()
+    return jsonify({'id': category.id, 'name': category.name})
+
+@app.route('/api/categories/<int:category_id>', methods=['DELETE'])
+@login_required
+def delete_category(category_id):
+    category = Category.query.filter_by(id=category_id, user=current_user).first_or_404()
+    db.session.delete(category)
+    db.session.commit()
+    return '', 204
 
 if __name__ == '__main__':
     with app.app_context():
